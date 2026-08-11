@@ -265,6 +265,7 @@ class Downloader(Thread):
         "timers",
         "last_max_chunk_size",
         "max_chunk_size",
+        "vpn_killswitch_paused",
     )
 
     def __init__(self, paused=False):
@@ -274,6 +275,11 @@ class Downloader(Thread):
 
         # Used for scheduled pausing
         self.paused: bool = paused
+
+        # Set/cleared only by VPNManager, so it can tell a kill-switch pause
+        # apart from a user's own manual pause and knows when it's safe to
+        # auto-resume.
+        self.vpn_killswitch_paused: bool = False
 
         # Used for reducing speed, should always be int and not float
         self.bandwidth_limit: int = 0

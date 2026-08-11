@@ -250,3 +250,36 @@ class TestNewsWrapper:
         else:
             assert current_ip is not None
         nntp.close(send_quit=False)
+
+    def test_connect_uses_get_effective_outgoing_nntp_ip(self, monkeypatch):
+        """VPN integration regression test: connect() must resolve the bind IP
+        via sabnzbd.vpn.manager.get_effective_outgoing_nntp_ip() - which itself
+        decides between the active VPN and the plain outgoing_nntp_ip setting -
+        rather than calling cfg.outgoing_nntp_ip() directly. Backward
+        compatibility (VPN disabled) is covered by TestOutgoingIpBackwardCompat
+        in tests/test_vpn_config.py."""
+        nw = mock.Mock()
+        nw.blocking = True
+        nw.thrdnum = 1
+        nw.server = mock.Mock()
+        nw.server.host = TEST_HOST
+        nw.server.port = TEST_PORT
+        nw.server.info = AddrInfo(*socket.getaddrinfo(TEST_HOST, TEST_PORT, 0, socket.SOCK_STREAM)[0])
+        nw.server.timeout = 10
+        nw.server.ssl = True
+        nw.server.ssl_context = None
+        nw.server.ssl_verify = 0
+        nw.server.ssl_ciphers = None
+
+        def mock_connect(self):
+            pass
+
+        monkeypatch.setattr("sabnzbd.newswrapper.NNTP.connect", mock_connect)
+        nntp = newswrapper.NNTP(nw, nw.server.info)
+        monkeypatch.undo()
+
+        with mock.patch("sabnzbd.vpn.manager.get_effective_outgoing_nntp_ip", return_value="") as mocked:
+            with pytest.raises(OSError):
+                nntp.connect()
+        mocked.assert_called_once()
+        nntp.close(send_quit=False)

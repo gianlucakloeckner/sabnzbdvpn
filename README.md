@@ -12,6 +12,28 @@ SABnzbd offers an easy setup wizard and has self-analysis tools to verify your s
 
 If you want to know more you can head over to our website: https://sabnzbd.org.
 
+## About This Fork
+
+This is a fork of the official [SABnzbd](https://github.com/sabnzbd/sabnzbd)
+project. It tracks upstream `develop` and adds one feature on top of it:
+
+- **Native multi-WireGuard VPN routing.** Upload multiple WireGuard `.conf`
+  files, keep every tunnel connected simultaneously, and SABnzbd
+  automatically routes NNTP traffic through whichever one currently gives
+  the best connection to your Usenet provider — with a configurable
+  selection strategy (lowest latency, or a latency+bandwidth balanced
+  score), hysteresis to avoid flapping between near-identical tunnels, and
+  an optional kill switch that pauses downloading rather than ever falling
+  back to your normal connection. Linux-only (including Docker), with no
+  extra device passthrough required.
+
+Everything else is unmodified upstream SABnzbd behavior. If VPN routing is
+left disabled (the default), this fork behaves identically to upstream.
+
+For the full explanation of how the feature works, how to set it up, Docker
+requirements, and troubleshooting, see
+**[`sabnzbd/vpn/README.md`](sabnzbd/vpn/README.md)**.
+
 ## Resolving Dependencies
 
 SABnzbd has a few dependencies you'll need before you can get running. If you've previously run SABnzbd from one of the various Linux packages, then you likely already have all the needed dependencies. If not, here's what you're looking for:
@@ -23,6 +45,9 @@ SABnzbd has a few dependencies you'll need before you can get running. If you've
 
 Optional:
 - See `requirements.txt`
+- `wireguard-tools` (Linux only) if you want to use the multi-WireGuard VPN
+  routing feature — see [`sabnzbd/vpn/README.md`](sabnzbd/vpn/README.md) for
+  what it does and how to set it up.
 
 Your package manager should supply these. If not, we've got links in our [installation guide](https://sabnzbd.org/wiki/installation/install-off-modules).
 

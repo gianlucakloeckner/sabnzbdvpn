@@ -745,8 +745,82 @@ class ConfigRSS:
         return self.__name
 
 
+class ConfigVPNProfile:
+    """Class defining a single WireGuard VPN profile.
+
+    Metadata only - the section name is an internally generated id (never a
+    user-controlled filename), and the WireGuard private key is never stored
+    here. The .conf file it came from (which does hold the key) lives on
+    disk at `conf_path`, outside sabnzbd.ini, with 0600 permissions.
+    """
+
+    def __init__(self, name, values):
+        self.__name = clean_section_name(name)
+        name = "vpn_profiles," + self.__name
+
+        self.display_name = OptionStr(name, "display_name", add=False)
+        self.interface = OptionStr(name, "interface", add=False)
+        self.interface_index = OptionNumber(name, "interface_index", 0, 0, 999, add=False)
+        self.enabled = OptionBool(name, "enabled", False, add=False)
+        self.endpoint_host = OptionStr(name, "endpoint_host", add=False)
+        self.endpoint_port = OptionNumber(name, "endpoint_port", 51820, 0, 2**16 - 1, add=False)
+        self.tunnel_ip = OptionStr(name, "tunnel_ip", add=False)
+        self.tunnel_prefix = OptionNumber(name, "tunnel_prefix", 32, 0, 128, add=False)
+        # Path only - the file it points to is never read by config.py
+        self.conf_path = OptionStr(name, "conf_path", add=False)
+        self.created = OptionNumber(name, "created", 0, add=False)
+
+        self.set_dict(values)
+        add_to_database("vpn_profiles", self.__name, self)
+
+    def set_dict(self, values: dict[str, Any]):
+        """Set one or more fields, passed as dictionary"""
+        for kw in (
+            "display_name",
+            "interface",
+            "interface_index",
+            "enabled",
+            "endpoint_host",
+            "endpoint_port",
+            "tunnel_ip",
+            "tunnel_prefix",
+            "conf_path",
+            "created",
+        ):
+            try:
+                value = values[kw]
+                getattr(self, kw).set(value)
+            except KeyError:
+                continue
+        if not self.display_name():
+            self.display_name.set(self.__name)
+
+    def get_dict(self, for_public_api: bool = False) -> dict[str, Any]:
+        """Return a dictionary with all attributes. `conf_path` is omitted
+        for the public API - it never contains the private key itself, but
+        there's no reason to expose a local filesystem path externally."""
+        output_dict = {}
+        output_dict["id"] = self.__name
+        output_dict["name"] = self.display_name()
+        output_dict["interface"] = self.interface()
+        output_dict["interface_index"] = self.interface_index()
+        output_dict["enabled"] = self.enabled()
+        output_dict["endpoint_host"] = self.endpoint_host()
+        output_dict["endpoint_port"] = self.endpoint_port()
+        output_dict["tunnel_ip"] = self.tunnel_ip()
+        output_dict["tunnel_prefix"] = self.tunnel_prefix()
+        output_dict["created"] = self.created()
+        if not for_public_api:
+            output_dict["conf_path"] = self.conf_path()
+        return output_dict
+
+    def delete(self):
+        """Remove from database"""
+        delete_from_database("vpn_profiles", self.__name)
+
+
 # Add typing to the options database-dict
-AllConfigTypes: TypeAlias = Option | ConfigCat | ConfigSorter | ConfigRSS | ConfigServer
+AllConfigTypes: TypeAlias = Option | ConfigCat | ConfigSorter | ConfigRSS | ConfigServer | ConfigVPNProfile
 
 
 class SABnzbdConfig(configobj.ConfigObj):
@@ -765,6 +839,7 @@ class SABnzbdConfig(configobj.ConfigObj):
         "rss": ConfigRSS,
         "servers": ConfigServer,
         "sorters": ConfigSorter,
+        "vpn_profiles": ConfigVPNProfile,
     }
 
     def __init__(self, *args, **kwargs):
@@ -1109,6 +1184,13 @@ class SABnzbdConfig(configobj.ConfigObj):
             return
 
     @synchronized()
+    def get_vpn_profiles(self) -> dict[str, ConfigVPNProfile]:
+        try:
+            return self.database["vpn_profiles"]
+        except KeyError:
+            return {}
+
+    @synchronized()
     def get_servers(self) -> dict[str, ConfigServer]:
         try:
             return self.database["servers"]
@@ -1232,6 +1314,10 @@ def validate_config_backup(config_backup_data: bytes) -> bool:
 def restore_config_backup(config_backup_data: bytes):
     """Restore configuration files from zip file"""
     CONFIG.restore_config_backup(config_backup_data)
+
+
+def get_vpn_profiles() -> dict[str, ConfigVPNProfile]:
+    return CONFIG.get_vpn_profiles()
 
 
 def get_servers() -> dict[str, ConfigServer]:

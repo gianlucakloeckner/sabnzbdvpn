@@ -112,6 +112,7 @@ import sabnzbd.bpsmeter
 import sabnzbd.scheduler as scheduler
 import sabnzbd.notifier as notifier
 import sabnzbd.sorting
+import sabnzbd.vpn.manager
 from sabnzbd.decorators import synchronized
 import sabnzbd.utils.ssdp
 import sabnzbd.utils.checkdir
@@ -128,6 +129,7 @@ DirScanner: sabnzbd.dirscanner.DirScanner
 BPSMeter: sabnzbd.bpsmeter.BPSMeter
 RSSReader: sabnzbd.rss.RSSReader
 Scheduler: sabnzbd.scheduler.Scheduler
+VPNManager: sabnzbd.vpn.manager.VPNManager
 
 # For backwards compatibility with pre-5.0 queue files
 sys.modules["sabnzbd.nzbstuff"] = sabnzbd.nzb
@@ -305,6 +307,7 @@ def initialize(pause_downloader=False, clean_up=False, repair=0):
     sabnzbd.URLGrabber = sabnzbd.urlgrabber.URLGrabber()
     sabnzbd.RSSReader = sabnzbd.rss.RSSReader()
     sabnzbd.Scheduler = sabnzbd.scheduler.Scheduler()
+    sabnzbd.VPNManager = sabnzbd.vpn.manager.VPNManager()
 
     # Run startup tasks
     sabnzbd.NzbQueue.read_queue(repair)
@@ -334,6 +337,9 @@ def start():
 
         logging.debug("Starting scheduler")
         sabnzbd.Scheduler.start()
+
+        logging.debug("Starting VPN manager")
+        sabnzbd.VPNManager.start()
 
         logging.debug("Starting dirscanner")
         sabnzbd.DirScanner.start()
@@ -386,6 +392,9 @@ def halt():
             sabnzbd.Downloader.join(timeout=3)
         except Exception:
             pass
+
+        logging.debug("Stopping VPN manager")
+        sabnzbd.VPNManager.stop()
 
         logging.debug("Stopping assembler")
         sabnzbd.Assembler.stop()

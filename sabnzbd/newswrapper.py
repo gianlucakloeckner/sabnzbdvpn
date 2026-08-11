@@ -34,6 +34,7 @@ from typing import Optional, Callable
 import sabctools
 import sabnzbd
 import sabnzbd.cfg
+import sabnzbd.vpn.manager
 from sabnzbd.constants import DEF_NETWORKING_TIMEOUT, NNTP_BUFFER_SIZE, Status, FORCE_PRIORITY
 from sabnzbd.encoding import utob
 from sabnzbd.get_addrinfo import AddrInfo
@@ -609,7 +610,7 @@ class NNTP:
             self.sock.settimeout(self.nw.server.timeout)
 
             # Connect
-            if outgoing_nntp_ip := sabnzbd.cfg.outgoing_nntp_ip():
+            if outgoing_nntp_ip := sabnzbd.vpn.manager.get_effective_outgoing_nntp_ip():
                 try:
                     self.sock.bind((outgoing_nntp_ip, 0))
                     socket_info = self.sock.getsockname()

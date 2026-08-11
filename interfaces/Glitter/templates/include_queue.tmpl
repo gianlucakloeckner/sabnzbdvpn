@@ -33,6 +33,11 @@
             <span class="glyphicon glyphicon-hdd"></span> <span data-bind="text: diskSpaceLeft2"></span>B $T('Glitter-free')
         </div>
         <!-- /ko -->
+        <!-- ko if: vpnEnabled()  -->
+        <div class="info-container-box" data-bind="css: { 'queue-error-info' : vpnKillswitchActive() }">
+            <span class="glyphicon glyphicon-lock"></span> $T('vpn-dashboard-indicator'): <span data-bind="text: vpnStatusText"></span>
+        </div>
+        <!-- /ko -->
         <div class="info-container-box-sorting" style="display: none" data-bind="visible: refreshRate() > 2">
             <a href="#" data-bind="click: refresh">
                 <span class="glyphicon glyphicon-repeat" data-tooltip="true" data-placement="left" title="$T('Glitter-refresh')"></span>

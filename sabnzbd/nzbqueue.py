@@ -62,6 +62,8 @@ class NzbQueue:
         self.__top_only: bool = cfg.top_only()
         self.__nzo_list: list[NzbObject] = []
         self.__nzo_table: dict[str, NzbObject] = {}
+        # Cheap id-diff so VPN selection only runs when the active NZB actually changes
+        self.__active_nzo_id_for_vpn: Optional[str] = None
 
         # Make sure the future-dir exists so the URLGrabber can download files
         # This will also create admin_dir if it doesn't exist already by calling get_path on it
@@ -723,6 +725,10 @@ class NzbQueue:
                 and nzo.status not in (Status.PAUSED, Status.GRABBING)
                 and not nzo.propagation_delay_left
             ) or nzo.priority == FORCE_PRIORITY:
+                if nzo.nzo_id != self.__active_nzo_id_for_vpn:
+                    self.__active_nzo_id_for_vpn = nzo.nzo_id
+                    if cfg.vpn_enabled() and getattr(sabnzbd, "VPNManager", None) is not None:
+                        sabnzbd.VPNManager.notify_active_nzo(nzo)
                 if not nzo.server_in_try_list(server):
                     nzo.get_articles(server, servers, fetch_limit)
                     if server.article_queue:

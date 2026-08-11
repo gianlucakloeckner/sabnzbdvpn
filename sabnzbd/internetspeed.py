@@ -26,6 +26,7 @@ import socket
 import ssl
 import time
 import threading
+from typing import Optional
 
 import sabctools
 import sabnzbd
@@ -75,8 +76,11 @@ def internetspeed_worker(secure_sock: ssl.SSLSocket, socket_speed: dict[ssl.SSLS
         pass
 
 
-def internetspeed_interal(family: int = socket.AF_UNSPEC) -> float:
-    """Measure internet speed from a test-download using our optimized SSL-code"""
+def internetspeed_interal(family: int = socket.AF_UNSPEC, bind_ip: Optional[str] = None) -> float:
+    """Measure internet speed from a test-download using our optimized SSL-code.
+    `bind_ip`, when given, binds every test socket to that source address first -
+    used by the VPN subsystem to measure throughput through a specific tunnel
+    rather than the host's normal outgoing interface."""
     context = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
     socket_speed = {}
 
@@ -94,6 +98,8 @@ def internetspeed_interal(family: int = socket.AF_UNSPEC) -> float:
         for _ in range(NR_CONNECTIONS):
             sock = socket.socket(addrinfo.family, addrinfo.type)
             sock.settimeout(DEF_NETWORKING_SHORT_TIMEOUT)
+            if bind_ip:
+                sock.bind((bind_ip, 0))
             sock.connect(addrinfo.sockaddr)
             secure_sock = context.wrap_socket(sock, server_hostname=TEST_HOSTNAME)
             secure_sock.setblocking(False)

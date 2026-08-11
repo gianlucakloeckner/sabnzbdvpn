@@ -47,6 +47,21 @@ function ViewModel() {
     self.cacheArticles = ko.observable();
     self.loglevel = ko.observable();
     self.nrWarnings = ko.observable(0);
+    self.vpnEnabled = ko.observable(false);
+    self.vpnActiveProfileName = ko.observable('');
+    self.vpnLatency = ko.observable();
+    self.vpnKillswitchActive = ko.observable(false);
+    // Compact "VPN: Frankfurt · 18ms" / "VPN: No healthy tunnel" dashboard indicator
+    self.vpnStatusText = ko.computed(function() {
+        if (self.vpnKillswitchActive()) {
+            return glitterTranslate.vpnKillswitchActive
+        }
+        if (self.vpnActiveProfileName()) {
+            var latency = self.vpnLatency()
+            return self.vpnActiveProfileName() + (latency ? ' · ' + Math.round(latency) + ' ms' : '')
+        }
+        return glitterTranslate.vpnNoTunnel
+    });
     self.allWarnings = ko.observableArray([]);
     self.allMessages = ko.observableArray([]);
     self.finishaction = ko.observable();
@@ -191,6 +206,14 @@ function ViewModel() {
 
         // Warnings (new warnings will trigger an update of allMessages)
         self.nrWarnings(response.queue.have_warnings)
+
+        // Compact VPN status (only populated when VPN routing is enabled)
+        self.vpnEnabled(!!(response.queue.vpn && response.queue.vpn.enabled))
+        if (self.vpnEnabled()) {
+            self.vpnActiveProfileName(response.queue.vpn.active_profile_name || '')
+            self.vpnLatency(response.queue.vpn.latency_ms)
+            self.vpnKillswitchActive(response.queue.vpn.killswitch_active)
+        }
 
         /***
             Spark line

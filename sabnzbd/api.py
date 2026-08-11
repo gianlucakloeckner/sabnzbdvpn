@@ -102,6 +102,7 @@ from sabnzbd.nzb import TryList, NzbObject
 from sabnzbd.newswrapper import NewsWrapper, NNTPPermanentError
 import sabnzbd.emailer
 import sabnzbd.sorting
+import sabnzbd.vpn
 
 # Type handler shorthands
 ApiParams: TypeAlias = dict[str, str | list[str]]
@@ -1033,6 +1034,143 @@ def _api_config_test_server(name: str, kwargs: ApiParams) -> bytes:
     return report(data={"result": result, "message": msg})
 
 
+##############################################################################
+# VPN
+##############################################################################
+def _api_vpn_list(name: str, kwargs: ApiParams) -> bytes:
+    """API: list configured VPN profiles with safe status metadata.
+    Never includes the private key or any raw configuration content."""
+    profiles = sabnzbd.VPNManager.get_profiles_public() if sabnzbd.VPNManager else []
+    return report(data={"profiles": profiles, "platform_supported": sabnzbd.vpn.is_platform_supported()})
+
+
+def _api_vpn_status(name: str, kwargs: ApiParams) -> bytes:
+    """API: overall VPN subsystem status"""
+    if not sabnzbd.VPNManager:
+        return report(data={"platform_supported": sabnzbd.vpn.is_platform_supported(), "enabled": False})
+    status = sabnzbd.VPNManager.get_status()
+    return report(
+        data={
+            "platform_supported": status.platform_supported,
+            "enabled": status.enabled,
+            "killswitch": status.killswitch,
+            "selection_mode": status.selection_mode.value,
+            "active_profile_id": status.active_profile_uuid,
+            "active_profile_name": status.active_profile_name,
+            "active_latency_ms": status.active_latency_ms,
+            "killswitch_active": status.killswitch_active,
+            "reason": status.reason,
+        }
+    )
+
+
+def _api_vpn_test(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id). Benchmarks one profile without changing selection."""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result = sabnzbd.VPNManager.test_profile(profile_id)
+    return report(data={"result": result.healthy, "message": result.error or "", "latency_ms": result.median_latency_ms})
+
+
+def _api_vpn_test_all(name: str, kwargs: ApiParams) -> bytes:
+    """API: benchmark every profile without changing selection."""
+    if not sabnzbd.VPNManager:
+        return report(data={})
+    results = sabnzbd.VPNManager.test_all_profiles()
+    return report(
+        data={
+            profile_id: {"result": result.healthy, "message": result.error or "", "latency_ms": result.median_latency_ms}
+            for profile_id, result in results.items()
+        }
+    )
+
+
+def _api_vpn_bandwidth_test(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id). Real test-download through the tunnel
+    via SABnzbd's own internetspeed mechanism; never changes selection."""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result = sabnzbd.VPNManager.test_profile_bandwidth(profile_id)
+    return report(data={"result": result.healthy, "message": result.error or "", "mbps": result.mbps})
+
+
+def _api_vpn_bandwidth_test_all(name: str, kwargs: ApiParams) -> bytes:
+    """API: bandwidth-test every profile without changing selection."""
+    if not sabnzbd.VPNManager:
+        return report(data={})
+    results = sabnzbd.VPNManager.test_all_profiles_bandwidth()
+    return report(
+        data={
+            profile_id: {"result": result.healthy, "message": result.error or "", "mbps": result.mbps}
+            for profile_id, result in results.items()
+        }
+    )
+
+
+def _api_vpn_activate(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id). Manual activation, bypasses hysteresis."""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result, msg = sabnzbd.VPNManager.activate_profile(profile_id)
+    return report(data={"result": result, "message": msg})
+
+
+def _api_vpn_enable(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id)"""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result, msg = sabnzbd.VPNManager.enable_profile(profile_id, True)
+    return report(data={"result": result, "message": msg})
+
+
+def _api_vpn_disable(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id)"""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result, msg = sabnzbd.VPNManager.enable_profile(profile_id, False)
+    return report(data={"result": result, "message": msg})
+
+
+def _api_vpn_delete(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts value(=profile id)"""
+    profile_id = kwargs.get("value")
+    if not profile_id:
+        return report(_MSG_NO_VALUE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    result, msg = sabnzbd.VPNManager.delete_profile(profile_id)
+    return report(data={"result": result, "message": msg})
+
+
+def _api_vpn_add_profile(name: str, kwargs: ApiParams) -> bytes:
+    """API: accepts name(=display name), vpn_conf(=uploaded WireGuard .conf file).
+    Mirrors _api_addfile's multipart-upload detection."""
+    display_name = name if isinstance(name, str) else ""
+    upload = kwargs.get("vpn_conf")
+    if not (hasattr(upload, "file") and hasattr(upload, "filename") and upload.filename):
+        return report(_MSG_NO_FILE)
+    if not sabnzbd.VPNManager:
+        return report(data={"result": False, "message": T("VPN routing is not available on this platform")})
+    conf_bytes = upload.file.read()
+    result, msg, profile_id = sabnzbd.VPNManager.add_profile_from_upload(conf_bytes, display_name)
+    return report(data={"result": result, "message": msg, "id": profile_id})
+
+
 def _api_config_create_backup(name: str, kwargs: ApiParams) -> bytes:
     backup_file = config.create_config_backup()
     return report(data={"result": bool(backup_file), "message": backup_file})
@@ -1128,6 +1266,17 @@ _api_table = {
     "test_apprise": (_api_test_apprise, 3),
     "test_prowl": (_api_test_prowl, 3),
     "test_nscript": (_api_test_nscript, 3),
+    "vpn_list": (_api_vpn_list, 2),
+    "vpn_status": (_api_vpn_status, 2),
+    "vpn_test": (_api_vpn_test, 3),
+    "vpn_test_all": (_api_vpn_test_all, 3),
+    "vpn_bandwidth_test": (_api_vpn_bandwidth_test, 3),
+    "vpn_bandwidth_test_all": (_api_vpn_bandwidth_test_all, 3),
+    "vpn_activate": (_api_vpn_activate, 3),
+    "vpn_enable": (_api_vpn_enable, 3),
+    "vpn_disable": (_api_vpn_disable, 3),
+    "vpn_delete": (_api_vpn_delete, 3),
+    "vpn_add_profile": (_api_vpn_add_profile, 3),
 }
 
 _api_queue_table = {
@@ -1940,6 +2089,20 @@ def build_header(webdir: str = "", for_template: bool = True, trans_functions: b
     anfo = sabnzbd.ArticleCache.cache_info()
     header["cache_art"] = str(anfo.article_sum)
     header["cache_size"] = to_units(anfo.cache_size, "B")
+
+    # Compact VPN status for the dashboard indicator - reuses this existing
+    # periodic poll rather than adding a separate one. Only populated when
+    # VPN routing is enabled; never includes profile secrets.
+    if cfg.vpn_enabled() and sabnzbd.VPNManager:
+        vpn_status = sabnzbd.VPNManager.get_status()
+        header["vpn"] = {
+            "enabled": True,
+            "active_profile_name": vpn_status.active_profile_name,
+            "latency_ms": vpn_status.active_latency_ms,
+            "killswitch_active": vpn_status.killswitch_active,
+        }
+    else:
+        header["vpn"] = {"enabled": False}
 
     return header
 

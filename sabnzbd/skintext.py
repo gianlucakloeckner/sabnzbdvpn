@@ -140,6 +140,7 @@ SKIN_TEXT = {
     "cmenu-email": TT("Email"),  #: Main menu item
     "cmenu-cat": TT("Categories"),  #: Main menu item
     "cmenu-sorting": TT("Sorting"),  #: Main menu item
+    "cmenu-vpn": TT("VPN"),  #: Main menu item
     "cmenu-special": TT("Special"),  #: Main menu item
     "cmenu-search": TT("Search"),  #: Main menu item
     # Main page
@@ -594,6 +595,57 @@ SKIN_TEXT = {
     "srv-articles-tried": TT(
         "%f% available of %d requested articles"
     ),  #: Server article availability, %f=percentage, %d=number of articles
+    # Config->VPN
+    "vpn-unsupported-platform": TT(
+        "WireGuard VPN management is currently supported on Linux only."
+    ),  #: Config->VPN, shown instead of the page on unsupported platforms
+    "vpn-enable": TT("Enable VPN routing"),  #: Config->VPN
+    "vpn-explain-enable": TT(
+        "Route NNTP traffic through the best available WireGuard VPN tunnel instead of the normal outgoing connection."
+    ),  #: Config->VPN
+    "vpn-killswitch": TT("Kill switch"),  #: Config->VPN
+    "vpn-explain-killswitch": TT(
+        "Block downloading instead of falling back to your normal connection when no VPN is healthy."
+    ),  #: Config->VPN
+    "vpn-selection-mode": TT("Selection strategy"),  #: Config->VPN
+    "vpn-selection-mode-lowest-latency": TT("Lowest latency"),  #: Config->VPN, selection strategy option
+    "vpn-selection-mode-balanced": TT("Balanced (latency + bandwidth)"),  #: Config->VPN, selection strategy option
+    "vpn-explain-selection-mode-balanced": TT(
+        "Balanced combines latency with the most recent Bandwidth test result. Run a bandwidth test on your profiles for this to be meaningful."
+    ),  #: Config->VPN
+    "vpn-test-before-job": TT("Benchmark before each NZB download"),  #: Config->VPN
+    "vpn-switch-threshold": TT("Switch threshold (%)"),  #: Config->VPN
+    "vpn-explain-switch-threshold": TT(
+        "Only switch away from a healthy VPN if another one is at least this much faster."
+    ),  #: Config->VPN
+    "vpn-benchmark-timeout": TT("Benchmark timeout (sec)"),  #: Config->VPN
+    "vpn-benchmark-samples": TT("Benchmark samples"),  #: Config->VPN
+    "vpn-profiles": TT("WireGuard Profiles"),  #: Config->VPN
+    "vpn-name": TT("Name"),  #: Config->VPN, profile table column
+    "vpn-interface": TT("Interface"),  #: Config->VPN, profile table column
+    "vpn-status": TT("Status"),  #: Config->VPN, profile table column
+    "vpn-latency": TT("Latency"),  #: Config->VPN, profile table column
+    "vpn-bandwidth": TT("Bandwidth"),  #: Config->VPN, profile table column
+    "vpn-selected": TT("Selected"),  #: Config->VPN, profile table column
+    "vpn-status-healthy": TT("Healthy"),  #: Config->VPN, profile status
+    "vpn-status-unhealthy": TT("Unreachable"),  #: Config->VPN, profile status
+    "vpn-status-unknown": TT("Not tested"),  #: Config->VPN, profile status
+    "vpn-status-disabled": TT("Disabled"),  #: Config->VPN, profile status
+    "vpn-killswitch-active": TT(
+        "Download paused: no healthy WireGuard VPN is available."
+    ),  #: Config->VPN and dashboard, kill-switch status message
+    "vpn-upload-profile": TT("Add WireGuard configuration"),  #: Config->VPN
+    "vpn-upload-name": TT("Profile name"),  #: Config->VPN, upload form field
+    "vpn-upload-file": TT("WireGuard .conf file"),  #: Config->VPN, upload form field
+    "button-vpnUpload": TT("Add WireGuard configuration"),  #: Button: Config->VPN
+    "button-vpnTest": TT("Test"),  #: Button: Config->VPN, test one profile
+    "button-vpnTestAll": TT("Test all"),  #: Button: Config->VPN, test every profile
+    "button-vpnBandwidthTest": TT("Bandwidth test"),  #: Button: Config->VPN, bandwidth-test one profile
+    "button-vpnBandwidthTestAll": TT("Bandwidth test all"),  #: Button: Config->VPN, bandwidth-test every profile
+    "button-vpnActivate": TT("Activate"),  #: Button: Config->VPN, manually select a profile
+    "button-vpnDelete": TT("Delete"),  #: Button: Config->VPN, delete a profile
+    "vpn-dashboard-indicator": TT("VPN"),  #: Dashboard, compact VPN status label prefix
+    "vpn-dashboard-no-tunnel": TT("No healthy tunnel"),  #: Dashboard, compact VPN status when nothing is active
     # Config->Scheduling
     "addSchedule": TT("Add Schedule"),  #:Config->Scheduling
     "sch-frequency": TT("Frequency"),  #:Config->Scheduling

@@ -69,6 +69,8 @@ import sabnzbd.cfg as cfg
 import sabnzbd.notifier as notifier
 import sabnzbd.newsunpack
 import sabnzbd.utils.ssdp
+import sabnzbd.vpn
+import sabnzbd.vpn.manager
 from sabnzbd.constants import (
     DEF_STD_CONFIG,
     DEFAULT_PRIORITY,
@@ -706,6 +708,7 @@ class ConfigPage:
         self.rss = ConfigRss("/config/rss/")
         self.scheduling = ConfigScheduling("/config/scheduling/")
         self.server = ConfigServer("/config/server/")
+        self.vpn = ConfigVPN("/config/vpn/")
         self.switches = ConfigSwitches("/config/switches/")
         self.categories = ConfigCats("/config/categories/")
         self.sorting = ConfigSorting("/config/sorting/")
@@ -1143,6 +1146,77 @@ class ConfigServer:
                 svr.enable.set(not svr.enable())
                 config.save_config()
                 sabnzbd.Downloader.update_server(server, server)
+        raise Raiser(self.__root)
+
+
+class ConfigVPN:
+    """Config > VPN page. Uploading a profile and per-profile Test/Test-all/
+    Activate all go through the API directly (mirrors how "test server"
+    already works) - this class only handles rendering the page and the
+    plain-form global-settings/delete/toggle actions."""
+
+    def __init__(self, root):
+        self.__root = root
+
+    @secured_expose(check_configlock=True)
+    def index(self, **kwargs):
+        conf = build_header(sabnzbd.WEB_DIR_CONFIG)
+        conf["vpn_platform_supported"] = sabnzbd.vpn.is_platform_supported()
+        conf["vpn_enabled"] = cfg.vpn_enabled()
+        conf["vpn_killswitch"] = cfg.vpn_killswitch()
+        conf["vpn_selection_mode"] = cfg.vpn_selection_mode()
+        conf["vpn_test_before_job"] = cfg.vpn_test_before_job()
+        conf["vpn_switch_threshold"] = cfg.vpn_switch_threshold()
+        conf["vpn_benchmark_timeout"] = cfg.vpn_benchmark_timeout()
+        conf["vpn_benchmark_samples"] = cfg.vpn_benchmark_samples()
+
+        status = sabnzbd.VPNManager.get_status() if sabnzbd.VPNManager else None
+        conf["vpn_profiles"] = sabnzbd.VPNManager.get_profiles_public() if sabnzbd.VPNManager else []
+        conf["vpn_status_reason"] = status.reason if status else None
+        conf["vpn_killswitch_active"] = status.killswitch_active if status else False
+
+        return template_filtered_response(
+            file=os.path.join(sabnzbd.WEB_DIR_CONFIG, "config_vpn.tmpl"),
+            search_list=conf,
+        )
+
+    @secured_expose(check_api_key=True, check_configlock=True)
+    def saveGlobal(self, **kwargs):
+        cfg.vpn_enabled.set(kwargs.get("vpn_enabled") == "1")
+        cfg.vpn_killswitch.set(kwargs.get("vpn_killswitch") == "1")
+        cfg.vpn_test_before_job.set(kwargs.get("vpn_test_before_job") == "1")
+        if selection_mode := kwargs.get("vpn_selection_mode"):
+            cfg.vpn_selection_mode.set(selection_mode)
+        if switch_threshold := kwargs.get("vpn_switch_threshold"):
+            cfg.vpn_switch_threshold.set(switch_threshold)
+        if benchmark_timeout := kwargs.get("vpn_benchmark_timeout"):
+            cfg.vpn_benchmark_timeout.set(benchmark_timeout)
+        if benchmark_samples := kwargs.get("vpn_benchmark_samples"):
+            cfg.vpn_benchmark_samples.set(benchmark_samples)
+        config.save_config()
+
+        # Apply enable/disable immediately instead of requiring a restart
+        if sabnzbd.VPNManager:
+            sabnzbd.VPNManager.refresh_enabled_state()
+
+        if kwargs.get("ajax"):
+            return sabnzbd.api.report()
+        raise Raiser(self.__root)
+
+    @secured_expose(check_api_key=True, check_configlock=True)
+    def deleteProfile(self, **kwargs):
+        profile_id = kwargs.get("id")
+        if profile_id and sabnzbd.VPNManager:
+            sabnzbd.VPNManager.delete_profile(profile_id)
+        raise Raiser(self.__root)
+
+    @secured_expose(check_api_key=True, check_configlock=True)
+    def toggleProfile(self, **kwargs):
+        profile_id = kwargs.get("id")
+        if profile_id and sabnzbd.VPNManager:
+            current = next((p for p in sabnzbd.VPNManager.get_profiles_public() if p["id"] == profile_id), None)
+            if current:
+                sabnzbd.VPNManager.enable_profile(profile_id, not current["enabled"])
         raise Raiser(self.__root)
 
 

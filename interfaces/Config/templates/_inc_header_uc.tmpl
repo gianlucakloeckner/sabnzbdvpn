@@ -17,6 +17,7 @@
         #if $pane == "Notify" then $T('cmenu-notif') else ""#
         #if $pane == "Categories" then $T('cmenu-cat') else ""#
         #if $pane == "Sorting" then $T('cmenu-sorting') else ""#
+        #if $pane == "VPN" then $T('cmenu-vpn') else ""#
         #if $pane == "Special" then $T('cmenu-special') else ""#
         #if $pane == "RSS" then $T('cmenu-rss') else ""#
     </title>
@@ -126,6 +127,12 @@
                     <a href="${root}config/switches/" #if $pane == "Switches" then 'class="active"' else ""#>
                         <span class="glyphicon glyphicon-check"></span>
                         <strong>$T('cmenu-switches')</strong>
+                    </a>
+                </li>
+                <li>
+                    <a href="${root}config/vpn/" #if $pane == "VPN" then 'class="active"' else ""#>
+                        <span class="glyphicon glyphicon-lock"></span>
+                        <strong>$T('cmenu-vpn')</strong>
                     </a>
                 </li>
                 <li>

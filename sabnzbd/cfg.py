@@ -560,6 +560,18 @@ outgoing_nntp_ip = OptionStr("misc", "outgoing_nntp_ip")
 
 
 ##############################################################################
+# Config - VPN
+##############################################################################
+vpn_enabled = OptionBool("vpn", "vpn_enabled", False)
+vpn_killswitch = OptionBool("vpn", "vpn_killswitch", True)
+vpn_selection_mode = OptionStr("vpn", "vpn_selection_mode", "lowest_latency")
+vpn_test_before_job = OptionBool("vpn", "vpn_test_before_job", True)
+vpn_switch_threshold = OptionNumber("vpn", "vpn_switch_threshold", 10, minval=0, maxval=100)
+vpn_benchmark_timeout = OptionNumber("vpn", "vpn_benchmark_timeout", 5, minval=1, maxval=60)
+vpn_benchmark_samples = OptionNumber("vpn", "vpn_benchmark_samples", 3, minval=1, maxval=10)
+
+
+##############################################################################
 # Config - Notifications
 ##############################################################################
 # [email]

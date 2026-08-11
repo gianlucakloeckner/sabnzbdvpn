@@ -1,0 +1,253 @@
+<!--#set global $pane="VPN"#-->
+<!--#set global $help_uri = $confighelpuri + "vpn"#-->
+<!--#include $webdir + "/_inc_header_uc.tmpl"#-->
+
+<div class="colmask">
+<!--#if not $vpn_platform_supported#-->
+    <div class="section">
+        <div class="col1">
+            <div class="alert alert-warning">
+                <span class="glyphicon glyphicon-exclamation-sign"></span> $T('vpn-unsupported-platform')
+            </div>
+        </div>
+    </div>
+<!--#else#-->
+    <!--#if $vpn_killswitch_active#-->
+    <div class="section">
+        <div class="col1">
+            <div class="alert alert-danger">
+                <span class="glyphicon glyphicon-exclamation-sign"></span> $T('vpn-killswitch-active')
+                <!--#if $vpn_status_reason#--> - $vpn_status_reason<!--#end if#-->
+            </div>
+        </div>
+    </div>
+    <!--#end if#-->
+
+    <form action="saveGlobal" method="post" name="fullform" class="fullform" autocomplete="off">
+        <input type="hidden" id="apikey" name="apikey" value="$apikey" />
+        <input type="hidden" id="ajax" name="ajax" value="1" />
+        <input type="hidden" name="output" value="json" />
+        <div class="section">
+            <div class="col2">
+                <h3>$T('cmenu-vpn') <a href="$help_uri" target="_blank"><span class="glyphicon glyphicon-question-sign"></span></a></h3>
+            </div><!-- /col2 -->
+            <div class="col1">
+                <fieldset>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_enabled">$T('vpn-enable')</label>
+                        <input type="checkbox" name="vpn_enabled" id="vpn_enabled" value="1" <!--#if int($vpn_enabled) > 0 then 'checked="checked"' else ""#--> />
+                        <span class="desc">$T('vpn-explain-enable')</span>
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_killswitch">$T('vpn-killswitch')</label>
+                        <input type="checkbox" name="vpn_killswitch" id="vpn_killswitch" value="1" <!--#if int($vpn_killswitch) > 0 then 'checked="checked"' else ""#--> />
+                        <span class="desc">$T('vpn-explain-killswitch')</span>
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_selection_mode">$T('vpn-selection-mode')</label>
+                        <select name="vpn_selection_mode" id="vpn_selection_mode">
+                            <option value="lowest_latency" <!--#if $vpn_selection_mode == "lowest_latency" then 'selected="selected"' else ""#-->>$T('vpn-selection-mode-lowest-latency')</option>
+                            <option value="balanced" <!--#if $vpn_selection_mode == "balanced" then 'selected="selected"' else ""#-->>$T('vpn-selection-mode-balanced')</option>
+                        </select>
+                        <span class="desc">$T('vpn-explain-selection-mode-balanced')</span>
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_test_before_job">$T('vpn-test-before-job')</label>
+                        <input type="checkbox" name="vpn_test_before_job" id="vpn_test_before_job" value="1" <!--#if int($vpn_test_before_job) > 0 then 'checked="checked"' else ""#--> />
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_switch_threshold">$T('vpn-switch-threshold')</label>
+                        <input type="number" name="vpn_switch_threshold" id="vpn_switch_threshold" min="0" max="100" value="$vpn_switch_threshold" />
+                        <span class="desc">$T('vpn-explain-switch-threshold')</span>
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_benchmark_timeout">$T('vpn-benchmark-timeout')</label>
+                        <input type="number" name="vpn_benchmark_timeout" id="vpn_benchmark_timeout" min="1" max="60" value="$vpn_benchmark_timeout" />
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_benchmark_samples">$T('vpn-benchmark-samples')</label>
+                        <input type="number" name="vpn_benchmark_samples" id="vpn_benchmark_samples" min="1" max="10" value="$vpn_benchmark_samples" />
+                    </div>
+                    <div class="field-pair">
+                        <button class="btn btn-default saveButton"><span class="glyphicon glyphicon-ok"></span> $T('button-saveChanges')</button>
+                    </div>
+                </fieldset>
+            </div><!-- /col1 -->
+        </div><!-- /section -->
+    </form>
+
+    <div class="section">
+        <div class="col2">
+            <h3>$T('vpn-profiles')</h3>
+        </div><!-- /col2 -->
+        <div class="col1">
+            <table class="table" id="vpnProfileTable">
+                <thead>
+                    <tr>
+                        <th>$T('vpn-name')</th>
+                        <th>$T('vpn-interface')</th>
+                        <th>$T('vpn-status')</th>
+                        <th>$T('vpn-latency')</th>
+                        <th>$T('vpn-bandwidth')</th>
+                        <th>$T('vpn-selected')</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                <!--#for $profile in $vpn_profiles#-->
+                    <tr data-vpn-id="$profile.id">
+                        <td>$profile.name</td>
+                        <td>$profile.interface</td>
+                        <td class="vpn-profile-status">
+                            <!--#if not $profile.enabled#-->$T('vpn-status-disabled')<!--#elif $profile.healthy is None#-->$T('vpn-status-unknown')<!--#elif $profile.healthy#-->$T('vpn-status-healthy')<!--#else#-->$T('vpn-status-unhealthy')<!--#end if#-->
+                        </td>
+                        <td class="vpn-profile-latency"><!--#if $profile.latency_ms is not None#-->${profile.latency_ms} ms<!--#else#-->-<!--#end if#--></td>
+                        <td class="vpn-profile-bandwidth"><!--#if $profile.bandwidth_mbps is not None#-->${profile.bandwidth_mbps} Mbps<!--#else#-->-<!--#end if#--></td>
+                        <td class="vpn-profile-selected"><!--#if $profile.selected#--><span class="glyphicon glyphicon-ok-circle"></span><!--#end if#--></td>
+                        <td>
+                            <button type="button" class="btn btn-default btn-xs vpnTest" data-vpn-id="$profile.id">$T('button-vpnTest')</button>
+                            <button type="button" class="btn btn-default btn-xs vpnBandwidthTest" data-vpn-id="$profile.id">$T('button-vpnBandwidthTest')</button>
+                            <button type="button" class="btn btn-default btn-xs vpnActivate" data-vpn-id="$profile.id">$T('button-vpnActivate')</button>
+                            <form action="toggleProfile" method="post" style="display:inline">
+                                <input type="hidden" name="apikey" value="$apikey" />
+                                <input type="hidden" name="id" value="$profile.id" />
+                                <button type="submit" class="btn btn-default btn-xs"><!--#if $profile.enabled#-->$T('vpn-status-disabled')<!--#else#-->$T('srv-enable')<!--#end if#--></button>
+                            </form>
+                            <form action="deleteProfile" method="post" style="display:inline" class="vpnDeleteForm">
+                                <input type="hidden" name="apikey" value="$apikey" />
+                                <input type="hidden" name="id" value="$profile.id" />
+                                <button type="submit" class="btn btn-default btn-xs"><span class="glyphicon glyphicon-trash"></span> $T('button-vpnDelete')</button>
+                            </form>
+                        </td>
+                    </tr>
+                <!--#end for#-->
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-default" id="vpnTestAllButton">$T('button-vpnTestAll')</button>
+            <button type="button" class="btn btn-default" id="vpnBandwidthTestAllButton">$T('button-vpnBandwidthTestAll')</button>
+        </div><!-- /col1 -->
+    </div><!-- /section -->
+
+    <div class="section">
+        <div class="col2">
+            <h3>$T('vpn-upload-profile')</h3>
+        </div><!-- /col2 -->
+        <div class="col1">
+            <form action="../../api" method="post" enctype="multipart/form-data" id="vpnUploadForm">
+                <input type="hidden" name="apikey" value="$apikey" />
+                <input type="hidden" name="output" value="json" />
+                <input type="hidden" name="mode" value="vpn_add_profile" />
+                <fieldset>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_upload_name">$T('vpn-upload-name')</label>
+                        <input type="text" name="name" id="vpn_upload_name" />
+                    </div>
+                    <div class="field-pair">
+                        <label class="config" for="vpn_conf">$T('vpn-upload-file')</label>
+                        <input type="file" name="vpn_conf" id="vpn_conf" accept=".conf" required />
+                    </div>
+                    <div class="field-pair">
+                        <button type="submit" class="btn btn-default"><span class="glyphicon glyphicon-plus"></span> $T('button-vpnUpload')</button>
+                    </div>
+                </fieldset>
+            </form>
+        </div><!-- /col1 -->
+    </div><!-- /section -->
+<!--#end if#-->
+</div><!-- /colmask -->
+
+<script type="text/javascript">
+jQuery(function() {
+    function vpnRenderResult(profileId, result) {
+        var row = jQuery('tr[data-vpn-id="' + profileId + '"]');
+        if (result.result) {
+            row.find('.vpn-profile-status').text('$T("vpn-status-healthy")');
+            row.find('.vpn-profile-latency').text(result.latency_ms ? result.latency_ms.toFixed(1) + ' ms' : '-');
+        } else {
+            row.find('.vpn-profile-status').text('$T("vpn-status-unhealthy")');
+            row.find('.vpn-profile-latency').text('-');
+        }
+    }
+
+    jQuery('.vpnTest').click(function() {
+        var theButton = jQuery(this);
+        var profileId = theButton.data('vpn-id');
+        theButton.attr('disabled', 'disabled');
+        jQuery.ajax({
+            type: 'POST',
+            url: '../../api',
+            data: {mode: 'vpn_test', value: profileId, apikey: '$apikey', output: 'json'}
+        }).then(function(data) {
+            theButton.removeAttr('disabled');
+            vpnRenderResult(profileId, data.value);
+        });
+    });
+
+    jQuery('#vpnTestAllButton').click(function() {
+        var theButton = jQuery(this);
+        theButton.attr('disabled', 'disabled');
+        jQuery.ajax({
+            type: 'POST',
+            url: '../../api',
+            data: {mode: 'vpn_test_all', apikey: '$apikey', output: 'json'}
+        }).then(function(data) {
+            theButton.removeAttr('disabled');
+            jQuery.each(data.value, function(profileId, result) {
+                vpnRenderResult(profileId, result);
+            });
+        });
+    });
+
+    function vpnRenderBandwidthResult(profileId, result) {
+        var row = jQuery('tr[data-vpn-id="' + profileId + '"]');
+        row.find('.vpn-profile-bandwidth').text(result.result && result.mbps ? result.mbps.toFixed(2) + ' Mbps' : '-');
+    }
+
+    jQuery('.vpnBandwidthTest').click(function() {
+        var theButton = jQuery(this);
+        var profileId = theButton.data('vpn-id');
+        theButton.attr('disabled', 'disabled');
+        jQuery.ajax({
+            type: 'POST',
+            url: '../../api',
+            data: {mode: 'vpn_bandwidth_test', value: profileId, apikey: '$apikey', output: 'json'}
+        }).then(function(data) {
+            theButton.removeAttr('disabled');
+            vpnRenderBandwidthResult(profileId, data.value);
+        });
+    });
+
+    jQuery('#vpnBandwidthTestAllButton').click(function() {
+        var theButton = jQuery(this);
+        theButton.attr('disabled', 'disabled');
+        jQuery.ajax({
+            type: 'POST',
+            url: '../../api',
+            data: {mode: 'vpn_bandwidth_test_all', apikey: '$apikey', output: 'json'}
+        }).then(function(data) {
+            theButton.removeAttr('disabled');
+            jQuery.each(data.value, function(profileId, result) {
+                vpnRenderBandwidthResult(profileId, result);
+            });
+        });
+    });
+
+    jQuery('.vpnActivate').click(function() {
+        var profileId = jQuery(this).data('vpn-id');
+        jQuery(this).attr('disabled', 'disabled');
+        jQuery.ajax({
+            type: 'POST',
+            url: '../../api',
+            data: {mode: 'vpn_activate', value: profileId, apikey: '$apikey', output: 'json'}
+        }).then(function() {
+            document.location = document.location;
+        });
+    });
+
+    jQuery('.vpnDeleteForm').submit(function() {
+        return confirm("$T('confirm')");
+    });
+});
+</script>
+
+<!--#include $webdir + "/_inc_footer_uc.tmpl"#-->
